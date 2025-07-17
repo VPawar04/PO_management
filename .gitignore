@@ -1,0 +1,19 @@
+
+# Python specific ignores
+__pycache__/
+*.pyc
+.venv/             # Your Python virtual environment folder
+venv/              # Common alternative for virtual environment
+*.env              # Your .env file (contains API keys, secret key)
+.flaskenv
+
+# Firebase service account key (ABSOLUTELY CRITICAL: DO NOT UPLOAD THIS!)
+firebase_service_account.json
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# App Engine specific ignores (if any generated)
+.gcloudignore
+.gcloud/

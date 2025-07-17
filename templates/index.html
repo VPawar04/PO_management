@@ -1,0 +1,357 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> PO Management </title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Link to your custom static CSS file -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 flex flex-col items-center">
+
+    <!-- Custom Modal -->
+    <div id="customModal" class="fixed inset-0 modal-overlay flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <p id="modalMessage" class="text-lg font-semibold text-gray-800 mb-4"></p>
+            <button onclick="hideModal()" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300 ease-in-out shadow-md">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-4xl bg-white rounded-xl shadow-lg p-6 sm:p-8">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6 text-center">
+             PO Management 
+
+        <div class="text-sm text-gray-600 mb-4 text-center">
+            Current User ID: <span id="currentUserId" class="font-mono bg-gray-200 px-2 py-1 rounded">{{ user_id }}</span>
+            <form id="userIdForm" class="inline-block ml-4" onsubmit="setUserId(event)" method="POST" action="/">
+                <input type="text" id="userIdInput" name="user_id_input" placeholder="Change User ID" class="px-2 py-1 border rounded-md text-sm">
+                <button type="submit" class="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300">Set</button>
+            </form>
+        </div>
+
+        <!-- Add New Purchase Order Form -->
+        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-bold text-blue-800 mb-4">Create New Purchase Order</h2>
+            <form id="addPoForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="vendorName" class="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
+                    <input type="text" id="vendorName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., Global Suppliers Inc." required>
+                </div>
+                <div>
+                    <label for="itemName" class="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
+                    <input type="text" id="itemName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., Raw Material X" required>
+                </div>
+                <div>
+                    <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                    <input type="number" id="quantity" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., 100" required min="1">
+                </div>
+                <div>
+                    <label for="unitPrice" class="block text-sm font-medium text-gray-700 mb-1">Unit Price</label>
+                    <input type="number" id="unitPrice" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., 15.50" step="0.01" required min="0.01">
+                </div>
+                <div class="sm:col-span-2 flex justify-center">
+                    <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105">
+                        Add Purchase Order
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- AI Demand Forecasting Section -->
+        <div class="mb-8 p-6 bg-purple-50 rounded-lg shadow-inner">
+            <h2 class="text-2xl font-bold text-purple-800 mb-4">AI Demand Forecasting</h2>
+            <p class="text-gray-700 mb-4">
+                Leverage AI to predict future demand for your items based on simulated historical sales data.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
+                <label for="forecastItem" class="text-sm font-medium text-gray-700">Select Item:</label>
+                <select id="forecastItem" class="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                    <option value="">Loading items...</option>
+                </select>
+                <button id="generateForecastBtn" onclick="handleGenerateForecast()" class="w-full sm:w-auto px-6 py-3 bg-purple-600 text-white font-semibold rounded-md shadow-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Generate Demand Forecast
+                </button>
+            </div>
+            <div id="forecastResult" class="mt-4 p-4 bg-purple-100 border border-purple-300 rounded-md hidden">
+                <h3 class="font-semibold text-purple-800 mb-2">Forecast Result:</h3>
+                <pre id="forecastText" class="text-gray-800 whitespace-pre-wrap"></pre>
+            </div>
+        </div>
+
+        <!-- Purchase Order List -->
+        <div class="p-6 bg-white rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Existing Purchase Orders</h2>
+            <div id="poListContainer" class="overflow-x-auto">
+                <!-- POs will be loaded here by JavaScript -->
+                <p class="text-gray-600 text-center py-4">Loading purchase orders...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.location.origin; // Flask app runs on the same origin
+
+        // --- Modal Functions ---
+        function showModal(message) {
+            document.getElementById('modalMessage').innerText = message;
+            const modal = document.getElementById('customModal');
+            modal.classList.remove('hidden'); // Ensure it's not display:none
+            // Use a small timeout to allow 'display' change to register before 'opacity' transition
+            setTimeout(() => {
+                modal.classList.add('active');
+            }, 10);
+        }
+
+        function hideModal() {
+            const modal = document.getElementById('customModal');
+            modal.classList.remove('active'); // Start fade out (if active)
+            modal.classList.add('hidden'); // Immediately hide (display:none)
+            // Removed the transitionend listener for instant disappearance
+        }
+
+        // --- User ID Handling ---
+        function setUserId(event) {
+            event.preventDefault();
+            const newUserId = document.getElementById('userIdInput').value.trim();
+            if (newUserId) {
+                event.target.submit();
+            } else {
+                showModal("Please enter a User ID.");
+            }
+        }
+
+        // --- Fetch and Render Purchase Orders ---
+        async function fetchAndRenderPOs() {
+            const poListContainer = document.getElementById('poListContainer');
+            poListContainer.innerHTML = '<p class="text-gray-600 text-center py-4">Loading purchase orders...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/get_pos`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const purchaseOrders = result.purchaseOrders;
+                    if (purchaseOrders.length === 0) {
+                        poListContainer.innerHTML = '<p class="text-gray-600 text-center py-4">No purchase orders found. Add one above!</p>';
+                        document.getElementById('forecastItem').innerHTML = '<option value="">No items available</option>';
+                    } else {
+                        renderPoTable(purchaseOrders);
+                        populateForecastItems(purchaseOrders);
+                    }
+                } else {
+                    showModal(`Error: ${result.message}`);
+                    poListContainer.innerHTML = `<p class="text-red-600 text-center py-4">Failed to load POs: ${result.message}</p>`;
+                }
+            } catch (error) {
+                console.error("Error fetching POs:", error);
+                showModal(`Network error fetching POs: ${error.message}`);
+                poListContainer.innerHTML = `<p class="text-red-600 text-center py-4">Network error: ${error.message}</p>`;
+            }
+        }
+
+        function renderPoTable(purchaseOrders) {
+            const poListContainer = document.getElementById('poListContainer');
+            let tableHtml = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">PO ID</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-lg">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+            `;
+
+            purchaseOrders.forEach(po => {
+                const statusClass = po.status === 'Approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                tableHtml += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${po.id.substring(0, 6)}...</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${po.vendorName}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${po.itemName}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">${po.quantity}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">$${po.unitPrice.toFixed(2)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">$${po.totalPrice.toFixed(2)}</td>
+                        <td class="px-4 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                                ${po.status}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="handleUpdateStatus('${po.id}', '${po.status}')" class="mr-2 px-3 py-1 text-white rounded-md text-xs transition duration-300 ease-in-out ${po.status === 'Pending' ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'}">
+                                ${po.status === 'Pending' ? 'Approve' : 'Unapprove'}
+                            </button>
+                            <button onclick="handleDeletePo('${po.id}')" class="px-3 py-1 bg-red-500 text-white rounded-md text-xs hover:bg-red-600 transition duration-300 ease-in-out">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `</tbody></table>`;
+            poListContainer.innerHTML = tableHtml;
+        }
+
+        function populateForecastItems(purchaseOrders) {
+            const forecastItemSelect = document.getElementById('forecastItem');
+            const uniqueItems = [...new Set(purchaseOrders.map(po => po.itemName))];
+            forecastItemSelect.innerHTML = ''; // Clear existing options
+
+            if (uniqueItems.length === 0) {
+                forecastItemSelect.innerHTML = '<option value="">No items available</option>';
+                document.getElementById('generateForecastBtn').disabled = true;
+            } else {
+                uniqueItems.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.innerText = item;
+                    forecastItemSelect.appendChild(option);
+                });
+                document.getElementById('generateForecastBtn').disabled = false;
+            }
+        }
+
+        // --- Add PO Form Submission ---
+        document.getElementById('addPoForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const vendorName = document.getElementById('vendorName').value;
+            const itemName = document.getElementById('itemName').value;
+            const quantity = document.getElementById('quantity').value;
+            const unitPrice = document.getElementById('unitPrice').value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/add_po`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ vendorName, itemName, quantity, unitPrice }),
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showModal(result.message);
+                    this.reset(); // Clear form
+                    fetchAndRenderPOs(); // Refresh list
+                } else {
+                    showModal(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                console.error("Error adding PO:", error);
+                showModal(`Network error adding PO: ${error.message}`);
+            }
+        });
+
+        // --- Update PO Status ---
+        async function handleUpdateStatus(poId, currentStatus) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/update_po_status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ poId, currentStatus }),
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showModal(result.message);
+                    fetchAndRenderPOs(); // Refresh list
+                } else {
+                    showModal(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                console.error("Error updating PO status:", error);
+                showModal(`Network error updating PO status: ${error.message}`);
+            }
+        }
+
+        // --- Delete PO ---
+        async function handleDeletePo(poId) {
+            if (!confirm("Are you sure you want to delete this Purchase Order?")) { // Using confirm for simplicity, replace with custom modal if preferred
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/delete_po`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ poId }),
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showModal(result.message);
+                    fetchAndRenderPOs(); // Refresh list
+                } else {
+                    showModal(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                console.error("Error deleting PO:", error);
+                showModal(`Network error deleting PO: ${error.message}`);
+            }
+        }
+
+        // --- Handle Demand Forecast ---
+        async function handleGenerateForecast() {
+            const selectedItem = document.getElementById('forecastItem').value;
+            const forecastResultDiv = document.getElementById('forecastResult');
+            const forecastTextPre = document.getElementById('forecastText');
+            const generateForecastBtn = document.getElementById('generateForecastBtn');
+
+            if (!selectedItem) {
+                showModal("Please select an item to forecast.");
+                return;
+            }
+
+            generateForecastBtn.disabled = true;
+            generateForecastBtn.innerText = 'Generating...';
+            forecastResultDiv.classList.add('hidden');
+            forecastTextPre.innerText = '';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/forecast_demand`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ itemName: selectedItem }),
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    forecastTextPre.innerText = result.forecast;
+                    forecastResultDiv.classList.remove('hidden');
+                } else {
+                    showModal(`Error generating forecast: ${result.message}`);
+                }
+            } catch (error) {
+                console.error("Error calling forecast API:", error);
+                showModal(`Network error generating forecast: ${error.message}`);
+            } finally {
+                generateForecastBtn.disabled = false;
+                generateForecastBtn.innerText = 'Generate Demand Forecast';
+            }
+        }
+
+        // Initial fetch when page loads
+        document.addEventListener('DOMContentLoaded', fetchAndRenderPOs);
+    </script>
+</body>
+</html>
